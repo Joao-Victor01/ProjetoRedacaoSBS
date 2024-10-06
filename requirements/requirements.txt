@@ -1,0 +1,5 @@
+spacy
+shap
+nltk
+uol-redacoes-xml
+symspellpy

@@ -1,0 +1,23 @@
+Estrutura do Arquivo XML
+<essay>: Esta tag encapsula todas as informações relevantes sobre uma única redação. Cada redação está contida em uma tag <essay>.
+
+<title>: O título da redação.
+
+<url>: Um link para a redação no site da UOL.
+
+<score>: A nota final da redação, que é a soma das notas dos critérios. Essa nota pode variar de 0 a 10.
+
+<original>: O texto original da redação, exatamente como foi escrito pelo autor.
+
+<fixed>: O texto corrigido da redação, onde erros foram ajustados conforme as sugestões do avaliador.
+
+<review>: Um conjunto de comentários gerais sobre a redação, incluindo feedback sobre a estrutura, argumentos e outros aspectos da escrita.
+
+<errors>: Uma lista de erros encontrados na redação, onde cada erro é detalhado com:
+
+<wrong>: A palavra ou frase errada.
+<right>: A correção sugerida.
+<criteria>: Esta seção contém informações sobre as notas atribuídas a cada critério de avaliação, com cada critério listado em uma tag <criterion>:
+
+<name>: O nome do critério (por exemplo, "Competência 1", "Competência 2", etc.).
+<score>: A nota atribuída para esse critério, que pode variar de 0 a 2.
