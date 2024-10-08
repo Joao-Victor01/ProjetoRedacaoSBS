@@ -9,7 +9,7 @@ nlp = spacy.load('pt_core_news_sm')
 symspell = SymSpell(max_dictionary_edit_distance=2, prefix_length=7)
 
 # Carregar o dicionário
-dicionario_path = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\dicionarios\dicionario03.txt"
+dicionario_path = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\dicionarios\dicionario04.txt"
 symspell.load_dictionary(dicionario_path, term_index=0, count_index=1)
 
 # Função para aplicar regras de conhecimento (ortográficas e gramaticais)

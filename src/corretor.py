@@ -96,7 +96,7 @@ def carregar_dataset(caminho_xml):
             notas.append(criterio1)
     
     print(f"Dataset carregado com sucesso. Total de redações: {len(redacoes)}")
-    return redacoes[:5], notas[:5]  # Limitar a 5 redações para testes
+    return redacoes, notas  # Retornar todas as redações e notas
 
 # Exemplo de uso
 if __name__ == "__main__":
