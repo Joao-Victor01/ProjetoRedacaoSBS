@@ -1,6 +1,7 @@
 import re
 import spacy
 from symspellpy import SymSpell, Verbosity
+import unicodedata  # Para normalizar a acentuação
 
 # Carregar o modelo spaCy para português
 nlp = spacy.load('pt_core_news_sm')
@@ -9,8 +10,13 @@ nlp = spacy.load('pt_core_news_sm')
 symspell = SymSpell(max_dictionary_edit_distance=2, prefix_length=7)
 
 # Carregar o dicionário
-dicionario_path = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\dicionarios\dicionario04.txt"
+dicionario_path = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\dicionarios\dicionario_combinado.txt"
 symspell.load_dictionary(dicionario_path, term_index=0, count_index=1)
+
+# Função para normalizar palavras (remover acentuação)
+def remover_acentuacao(palavra):
+    nfkd_form = unicodedata.normalize('NFKD', palavra)
+    return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
 
 # Função para aplicar regras de conhecimento (ortográficas e gramaticais)
 def aplicar_regras_conhecimento(texto):
@@ -21,12 +27,14 @@ def aplicar_regras_conhecimento(texto):
     palavras = texto.split()
     print(f"Total de palavras a processar: {len(palavras)}")
     for palavra in palavras:
-        print(f"Processando palavra: {palavra}")  # Verifique quais palavras estão sendo processadas
-        sugestões = symspell.lookup(palavra, Verbosity.CLOSEST, 2)
+        # Normalizando a palavra
+        palavra_normalizada = remover_acentuacao(palavra.strip('.,!?"\'').lower())  # Remove pontuação, acentos e converte para minúsculas
+        print(f"Processando palavra: {palavra_normalizada}")  # Verifique quais palavras estão sendo processadas
+        sugestões = symspell.lookup(palavra_normalizada, Verbosity.CLOSEST, 2)
         if sugestões:
             palavra_correta = sugestões[0].term  # Pega a sugestão mais próxima
-            if palavra_correta != palavra:
-                print(f"Palavra incorreta: {palavra} -> Correção sugerida: {palavra_correta}")
+            if palavra_correta != palavra_normalizada:
+                print(f"Palavra incorreta: {palavra_normalizada} -> Correção sugerida: {palavra_correta}")
                 erros_ortograficos.append((palavra, palavra_correta))
 
     # Regras gramaticais (concordância simples)

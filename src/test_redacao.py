@@ -1,8 +1,5 @@
-# src/test_redacao.py
-from corretor import avaliar_redacao_completa, extrair_features  # Importando a função extrair_features
+from corretor import avaliar_redacao_completa
 from processamento import aplicar_regras_conhecimento, aplicar_pln
-from sklearn.linear_model import LinearRegression
-import xml.etree.ElementTree as ET
 
 # Exemplo de redação para teste
 redacao_exemplo = """
@@ -24,7 +21,7 @@ def avaliar_redacao_completa(texto, modelo):
 
     return nota_prevista, erros_ortograficos, erros_gramaticais, erros_pln
 
-# Carregar o dataset e treinar o modelo
+# Carregar o dataset e treinar o modelo, caso necessário
 def carregar_e_treinar_modelo():
     caminho_xml = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\data\DatasetRedacoes.xml"
     
@@ -64,16 +61,12 @@ def carregar_e_treinar_modelo():
 
     redacoes, notas = carregar_dataset(caminho_xml)
 
-    # Treinar o modelo (Linear Regression)
-    modelo = LinearRegression()
-    features = [extrair_features(redacao) for redacao in redacoes]
-    modelo.fit(features, notas)
-
-    return modelo
+    # Treinar e salvar o modelo
+    return treinar_e_salvar_modelo(redacoes, notas)
 
 # Função principal para teste
 if __name__ == "__main__":
-    modelo = carregar_e_treinar_modelo()
+    modelo = carregar_e_treinar_modelo()  # Carregar ou treinar o modelo
     
     # Avaliar a redação de exemplo
     nota_final, erros_ortograficos, erros_gramaticais, erros_pln = avaliar_redacao_completa(redacao_exemplo, modelo)

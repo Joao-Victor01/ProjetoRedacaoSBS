@@ -1,8 +1,10 @@
+# src/corretor.py
 from processamento import aplicar_regras_conhecimento, aplicar_pln
 import xml.etree.ElementTree as ET
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
+import joblib  # Para salvar e carregar o modelo
 
 # Função para extrair features da redação, incluindo erros ortográficos e gramaticais
 def extrair_features(texto):
@@ -56,13 +58,22 @@ def treinar_modelo(redacoes, notas):
     score = modelo.score(X_test, y_test)
     print(f"Precisão do modelo: {score * 100:.2f}%")
 
+    # Salvar o modelo treinado
+    caminho_modelo = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\modelo_treinado.pkl"
+    joblib.dump(modelo, caminho_modelo)
+    print(f"Modelo salvo em {caminho_modelo}")
+
     return modelo
 
 # Função para avaliar uma redação com o modelo
 def avaliar_redacao_com_modelo(texto, modelo):
     features = extrair_features(texto)
     nota_prevista = modelo.predict([features])[0]
-    return nota_prevista
+    # Aplicar as regras de conhecimento e PLN
+    erros_ortograficos, erros_gramaticais = aplicar_regras_conhecimento(texto)
+    erros_pln = aplicar_pln(texto)
+
+    return nota_prevista, erros_ortograficos, erros_gramaticais, erros_pln
 
 # Carregar o arquivo XML e extrair textos e notas
 def carregar_dataset(caminho_xml):
@@ -110,6 +121,9 @@ if __name__ == "__main__":
     # Avaliar a primeira redação
     for texto_original in redacoes[:1]:
         print("Avaliando redação...")
-        nota_prevista = avaliar_redacao_com_modelo(texto_original, modelo)
+        nota_prevista, erros_ortograficos, erros_gramaticais, erros_pln = avaliar_redacao_com_modelo(texto_original, modelo)
         print(f"Texto Original: {texto_original}")
         print(f"Nota Prevista para Competência 1: {nota_prevista:.2f}")
+        print(f"Erros Ortográficos: {erros_ortograficos}")
+        print(f"Erros Gramaticais: {erros_gramaticais}")
+        print(f"Erros PLN: {erros_pln}")
