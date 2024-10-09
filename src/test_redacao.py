@@ -1,11 +1,7 @@
 # src/test_redacao.py
 from corretor import avaliar_redacao_com_modelo
 from processamento import aplicar_regras_conhecimento, aplicar_languagetool
-import xml.etree.ElementTree as ET
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
-import joblib  # Para salvar e carregar o modelo
+import joblib  # Para carregar o modelo salvo
 
 # Exemplo de redação para teste
 redacao_exemplo = """
@@ -16,58 +12,29 @@ por se tratar da sua vida privada enquanto a imprensa vê cerceada sua liberdade
 Portanto, é preciso avaliar até onde o direito de expressão pode ser abusivo, lesar a honra do cidadão, e até mesmo causar transtornos psicológicos ao alvo das notícias. Dessa forma, o bem estar do ser humano deve estar à frente da liberdade de expressão quando esta não for de suma necessidade ao conhecimento público.
 """
 
-# Carregar o dataset e treinar o modelo
-def carregar_e_treinar_modelo():
-    caminho_xml = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\data\DatasetRedacoes.xml"
-    
-    # Função para carregar o dataset (extraída do corretor.py)
-    def carregar_dataset(caminho_xml):
-        print("Carregando o dataset...")
-        tree = ET.parse(caminho_xml)
-        root = tree.getroot()
-        redacoes = []
-        notas = []
-
-        for essay in root.findall('.//essay'):
-            original_tag = essay.find('original')
-            texto_original = original_tag.text.strip() if original_tag is not None and original_tag.text is not None else 'Texto não encontrado'
-
-            criterio1 = None
-            criteria = essay.find('criteria')
-
-            if criteria is not None:
-                for criterion in criteria.findall('criterion'):
-                    nome = criterion.find('name').text.strip() if criterion.find('name') is not None else 'Nome não encontrado'
-                    if nome == "Competência 1":
-                        score_tag = criterion.find('score')
-                        if score_tag is not None and score_tag.text is not None:
-                            try:
-                                nota = score_tag.text.split()[0].strip().replace(',', '.')
-                                criterio1 = float(nota)
-                            except ValueError:
-                                print(f"Erro ao converter a nota para float: {score_tag.text}")
-
-            if criterio1 is not None:
-                redacoes.append(texto_original)
-                notas.append(criterio1)
-        
-        print(f"Dataset carregado com sucesso. Total de redações: {len(redacoes)}")
-        return redacoes, notas
-
-    redacoes, notas = carregar_dataset(caminho_xml)
-
-    # Treinar e salvar o modelo
-    return treinar_modelo(redacoes, notas)
+# Função para carregar o modelo salvo
+def carregar_modelo_salvo():
+    caminho_modelo = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\modelo_treinado_teste.pkl"
+    try:
+        modelo = joblib.load(caminho_modelo)
+        print(f"Modelo carregado de {caminho_modelo}")
+        return modelo
+    except Exception as e:
+        print(f"Erro ao carregar o modelo: {e}")
+        return None
 
 # Função principal para teste
 if __name__ == "__main__":
-    modelo = carregar_e_treinar_modelo()  # Carregar ou treinar o modelo
+    modelo = carregar_modelo_salvo()  # Carregar o modelo treinado previamente
     
-    # Avaliar a redação de exemplo
-    nota_final, erros_ortograficos, erros_languagetool = avaliar_redacao_com_modelo(redacao_exemplo, modelo)
+    if modelo is not None:
+        # Avaliar a redação de exemplo
+        nota_final, erros_ortograficos, erros_languagetool = avaliar_redacao_com_modelo(redacao_exemplo, modelo)
 
-    # Exibir os resultados
-    print(f"Texto da Redação:\n{redacao_exemplo}")
-    print(f"Nota Final: {nota_final:.2f}")
-    print(f"Erros Ortográficos: {erros_ortograficos}")
-    print(f"Erros LanguageTool: {erros_languagetool}")
+        # Exibir os resultados
+        print(f"Texto da Redação:\n{redacao_exemplo}")
+        print(f"Nota Final: {nota_final:.2f}")
+        print(f"Erros Ortográficos: {erros_ortograficos}")
+        print(f"Erros LanguageTool: {erros_languagetool}")
+    else:
+        print("Não foi possível carregar o modelo.")
