@@ -1,5 +1,6 @@
-
 # src/corretorTeste.py
+
+
 from processamento import aplicar_regras_conhecimento, aplicar_languagetool
 import xml.etree.ElementTree as ET
 import numpy as np

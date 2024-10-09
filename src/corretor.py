@@ -80,7 +80,8 @@ def treinar_modelo(redacoes, notas):
     return modelo
 
 # Carregar o arquivo XML e extrair textos e notas
-def carregar_dataset(caminho_xml):
+def carregar_dataset(caminho_xml, limite=None):  # Adicionando o parâmetro limite
+
     print("Carregando o dataset...")
     tree = ET.parse(caminho_xml)
     root = tree.getroot()
@@ -108,10 +109,14 @@ def carregar_dataset(caminho_xml):
 
         if criterio1 is not None:
             redacoes.append(texto_original)
-            notas.append(criterio1)
+            notas.append(criterio1)  # Adicionando a nota correspondente
+
+        # Limitar o número de redações se o limite for especificado
+        if limite is not None and len(redacoes) >= limite:
+            break
     
     print(f"Dataset carregado com sucesso. Total de redações: {len(redacoes)}")
-    return redacoes, notas  # Retornar todas as redações
+    return redacoes, notas  # Retornar as redações e suas notas
 
 # Função para avaliar uma redação com o modelo
 def avaliar_redacao_com_modelo(texto, modelo):
@@ -128,7 +133,7 @@ def avaliar_redacao_com_modelo(texto, modelo):
 if __name__ == "__main__":
     print("Iniciando processo...")
     caminho_xml = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\data\DatasetRedacoes.xml"
-    redacoes, notas = carregar_dataset(caminho_xml)  # Usar o dataset completo
+    redacoes, notas = carregar_dataset(caminho_xml, limite=20)  
 
     # Treinar o modelo
     modelo = treinar_modelo(redacoes, notas)
