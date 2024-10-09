@@ -1,13 +1,16 @@
-from processamento import aplicar_regras_conhecimento, aplicar_pln
+
+# src/corretorTeste.py
+from processamento import aplicar_regras_conhecimento, aplicar_languagetool
 import xml.etree.ElementTree as ET
-import pickle
+import numpy as np
+from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
-import os
+import joblib  # Para salvar e carregar o modelo
 
 # Função para extrair features da redação, incluindo erros ortográficos e gramaticais
 def extrair_features(texto):
     print("Iniciando extração de features...")
-
+    
     numero_caracteres = len(texto)
     palavras = texto.split()
     numero_palavras = len(palavras)
@@ -20,13 +23,13 @@ def extrair_features(texto):
 
     # Aplicar as regras de conhecimento
     print("Aplicando regras ortográficas e gramaticais...")
-    erros_ortograficos, erros_gramaticais = aplicar_regras_conhecimento(texto)
-    erros_pln = aplicar_pln(texto)
+    erros_ortograficos = aplicar_regras_conhecimento(texto)
+    erros_gramaticais = aplicar_languagetool(texto)
 
     numero_erros_ortograficos = len(erros_ortograficos)
     numero_erros_gramaticais = len(erros_gramaticais)
-    numero_erros_pln = len(erros_pln)
 
+    # Retorna as features em um array
     print("Extração de features concluída.")
     return [
         numero_caracteres,
@@ -38,40 +41,49 @@ def extrair_features(texto):
         tamanho_medio_palavras,
         numero_erros_ortograficos,
         numero_erros_gramaticais,
-        numero_erros_pln
     ]
 
 # Função para treinar o modelo de regressão linear com as features
-def treinar_modelo(redacoes, notas, modelo_path):
+def treinar_modelo(redacoes, notas):
     print("Iniciando o treinamento do modelo...")
-
-    features = [extrair_features(redacao) for redacao in redacoes]
     
+    features = [extrair_features(redacao) for redacao in redacoes]
+    X_train, X_test, y_train, y_test = train_test_split(features, notas, test_size=0.2, random_state=42)
+
     modelo = LinearRegression()
-    modelo.fit(features, notas)
+    modelo.fit(X_train, y_train)
+
+    # Avaliar o modelo
+    score = modelo.score(X_test, y_test)
+    print(f"Precisão do modelo: {score * 100:.2f}%")
 
     # Salvar o modelo treinado
-    with open(modelo_path, 'wb') as f:
-        pickle.dump(modelo, f)
+    caminho_modelo = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\modelo_treinado_teste.pkl"
+    joblib.dump(modelo, caminho_modelo)
+    print(f"Modelo salvo em {caminho_modelo}")
 
-    print(f"Modelo salvo em {modelo_path}")
     return modelo
 
 # Função para avaliar uma redação com o modelo
 def avaliar_redacao_com_modelo(texto, modelo):
     features = extrair_features(texto)
     nota_prevista = modelo.predict([features])[0]
-    return nota_prevista
+    
+    # Aplicar as regras de conhecimento e LanguageTool
+    erros_ortograficos = aplicar_regras_conhecimento(texto)
+    erros_languagetool = aplicar_languagetool(texto)
+
+    return nota_prevista, erros_ortograficos, erros_languagetool
 
 # Carregar o arquivo XML e extrair textos e notas
-def carregar_dataset(caminho_xml, limit=5):  # Limitando a um trecho menor para testes
+def carregar_dataset(caminho_xml, limite=5):
     print("Carregando o dataset...")
     tree = ET.parse(caminho_xml)
     root = tree.getroot()
     redacoes = []
     notas = []
 
-    for essay in root.findall('.//essay'):
+    for essay in root.findall('.//essay')[:limite]:  # Limitar o número de redações para testes rápidos
         original_tag = essay.find('original')
         texto_original = original_tag.text.strip() if original_tag is not None and original_tag.text is not None else 'Texto não encontrado'
 
@@ -93,35 +105,24 @@ def carregar_dataset(caminho_xml, limit=5):  # Limitando a um trecho menor para 
         if criterio1 is not None:
             redacoes.append(texto_original)
             notas.append(criterio1)
-        if len(redacoes) >= limit:  # Limitar o número de redações para testes
-            break
     
     print(f"Dataset carregado com sucesso. Total de redações: {len(redacoes)}")
-    return redacoes, notas
-
-# Função principal para treinamento ou carregamento do modelo
-def carregar_ou_treinar_modelo(caminho_xml, modelo_path, treinar=False):
-    if treinar or not os.path.exists(modelo_path):
-        print("Treinando o modelo...")
-        redacoes, notas = carregar_dataset(caminho_xml, limit=50)  # Teste com 50 redações
-        modelo = treinar_modelo(redacoes, notas, modelo_path)
-    else:
-        print("Carregando modelo treinado...")
-        with open(modelo_path, 'rb') as f:
-            modelo = pickle.load(f)
-    return modelo
+    return redacoes, notas  # Retornar as redações limitadas
 
 # Exemplo de uso
 if __name__ == "__main__":
+    print("Iniciando processo...")
     caminho_xml = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\data\DatasetRedacoes.xml"
-    modelo_path = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\modelo_teste.pkl"
+    redacoes, notas = carregar_dataset(caminho_xml, limite=5)  # Limitar para 5 redações para testes mais rápidos
 
-    modelo = carregar_ou_treinar_modelo(caminho_xml, modelo_path, treinar=True)  # Forçar treinamento para testes
+    # Treinar o modelo
+    modelo = treinar_modelo(redacoes, notas)
 
-    # Avaliar a primeira redação do conjunto limitado
-    redacoes, _ = carregar_dataset(caminho_xml, limit=5)
-    for texto_original in redacoes:
+    # Avaliar a primeira redação
+    for texto_original in redacoes[:1]:
         print("Avaliando redação...")
-        nota_prevista = avaliar_redacao_com_modelo(texto_original, modelo)
+        nota_prevista, erros_ortograficos, erros_languagetool = avaliar_redacao_com_modelo(texto_original, modelo)
         print(f"Texto Original: {texto_original}")
         print(f"Nota Prevista para Competência 1: {nota_prevista:.2f}")
+        print(f"Erros Ortográficos: {erros_ortograficos}")
+        print(f"Erros LanguageTool: {erros_languagetool}")

@@ -1,12 +1,11 @@
-# src/corretor.py
-from processamento import aplicar_regras_conhecimento, aplicar_pln
+from processamento import aplicar_regras_conhecimento, aplicar_languagetool
 import xml.etree.ElementTree as ET
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
-import joblib  # Para salvar e carregar o modelo
+import joblib
 
-# Função para extrair features da redação, incluindo erros ortográficos e gramaticais
+# Função para extrair features da redação
 def extrair_features(texto):
     print("Iniciando extração de features...")
     
@@ -21,15 +20,16 @@ def extrair_features(texto):
     tamanho_medio_palavras = sum(len(p) for p in palavras) / max(numero_palavras, 1)
 
     # Aplicar as regras de conhecimento
-    print("Aplicando regras ortográficas e gramaticais...")
-    erros_ortograficos, erros_gramaticais = aplicar_regras_conhecimento(texto)
-    erros_pln = aplicar_pln(texto)
+    print("Aplicando regras ortográficas...")
+    erros_ortograficos = aplicar_regras_conhecimento(texto)
+
+    # Aplicar correções gramaticais com LanguageTool
+    print("Aplicando correções gramaticais com LanguageTool...")
+    erros_gramaticais = aplicar_languagetool(texto)
 
     numero_erros_ortograficos = len(erros_ortograficos)
     numero_erros_gramaticais = len(erros_gramaticais)
-    numero_erros_pln = len(erros_pln)
 
-    # Retorna as features em um array
     print("Extração de features concluída.")
     return [
         numero_caracteres,
@@ -40,25 +40,21 @@ def extrair_features(texto):
         repeticao_palavras,
         tamanho_medio_palavras,
         numero_erros_ortograficos,
-        numero_erros_gramaticais,
-        numero_erros_pln
+        numero_erros_gramaticais
     ]
 
-# Função para treinar o modelo de regressão linear com as features
+# Função para treinar o modelo de regressão linear
 def treinar_modelo(redacoes, notas):
     print("Iniciando o treinamento do modelo...")
-    
     features = [extrair_features(redacao) for redacao in redacoes]
     X_train, X_test, y_train, y_test = train_test_split(features, notas, test_size=0.2, random_state=42)
 
     modelo = LinearRegression()
     modelo.fit(X_train, y_train)
 
-    # Avaliar o modelo
     score = modelo.score(X_test, y_test)
     print(f"Precisão do modelo: {score * 100:.2f}%")
 
-    # Salvar o modelo treinado
     caminho_modelo = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\modelo_treinado.pkl"
     joblib.dump(modelo, caminho_modelo)
     print(f"Modelo salvo em {caminho_modelo}")
@@ -69,13 +65,13 @@ def treinar_modelo(redacoes, notas):
 def avaliar_redacao_com_modelo(texto, modelo):
     features = extrair_features(texto)
     nota_prevista = modelo.predict([features])[0]
-    # Aplicar as regras de conhecimento e PLN
-    erros_ortograficos, erros_gramaticais = aplicar_regras_conhecimento(texto)
-    erros_pln = aplicar_pln(texto)
 
-    return nota_prevista, erros_ortograficos, erros_gramaticais, erros_pln
+    erros_ortograficos = aplicar_regras_conhecimento(texto)
+    erros_gramaticais = aplicar_languagetool(texto)
 
-# Carregar o arquivo XML e extrair textos e notas
+    return nota_prevista, erros_ortograficos, erros_gramaticais
+
+# Função para carregar o dataset
 def carregar_dataset(caminho_xml):
     print("Carregando o dataset...")
     tree = ET.parse(caminho_xml)
@@ -89,7 +85,6 @@ def carregar_dataset(caminho_xml):
 
         criterio1 = None
         criteria = essay.find('criteria')
-
         if criteria is not None:
             for criterion in criteria.findall('criterion'):
                 nome = criterion.find('name').text.strip() if criterion.find('name') is not None else 'Nome não encontrado'
@@ -105,9 +100,9 @@ def carregar_dataset(caminho_xml):
         if criterio1 is not None:
             redacoes.append(texto_original)
             notas.append(criterio1)
-    
+
     print(f"Dataset carregado com sucesso. Total de redações: {len(redacoes)}")
-    return redacoes, notas  # Retornar todas as redações e notas
+    return redacoes, notas
 
 # Exemplo de uso
 if __name__ == "__main__":
@@ -115,15 +110,12 @@ if __name__ == "__main__":
     caminho_xml = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\data\DatasetRedacoes.xml"
     redacoes, notas = carregar_dataset(caminho_xml)
 
-    # Treinar o modelo
     modelo = treinar_modelo(redacoes, notas)
 
-    # Avaliar a primeira redação
     for texto_original in redacoes[:1]:
         print("Avaliando redação...")
-        nota_prevista, erros_ortograficos, erros_gramaticais, erros_pln = avaliar_redacao_com_modelo(texto_original, modelo)
+        nota_prevista, erros_ortograficos, erros_gramaticais = avaliar_redacao_com_modelo(texto_original, modelo)
         print(f"Texto Original: {texto_original}")
         print(f"Nota Prevista para Competência 1: {nota_prevista:.2f}")
         print(f"Erros Ortográficos: {erros_ortograficos}")
         print(f"Erros Gramaticais: {erros_gramaticais}")
-        print(f"Erros PLN: {erros_pln}")
