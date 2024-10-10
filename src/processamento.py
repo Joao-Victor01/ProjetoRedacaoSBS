@@ -26,12 +26,12 @@ def aplicar_regras_conhecimento(texto):
     print(f"Total de palavras a processar: {len(palavras)}")
     for palavra in palavras:
         palavra_normalizada = remover_acentuacao(palavra.strip('.,!?"\'').lower())
-        print(f"Processando palavra: {palavra_normalizada}")
+        #print(f"Processando palavra: {palavra_normalizada}")
         sugestões = symspell.lookup(palavra_normalizada, Verbosity.CLOSEST, 2)
         if sugestões:
             palavra_correta = sugestões[0].term
             if palavra_correta != palavra_normalizada:
-                print(f"Palavra incorreta: {palavra_normalizada} -> Correção sugerida: {palavra_correta}")
+                #print(f"Palavra incorreta: {palavra_normalizada} -> Correção sugerida: {palavra_correta}")
                 erros_ortograficos.append((palavra, palavra_correta))
 
     return erros_ortograficos

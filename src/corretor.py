@@ -7,10 +7,48 @@ from sklearn.linear_model import LinearRegression
 import joblib  # Para salvar e carregar o modelo
 import time  # Para medir o tempo de execução
 
+# Caminho do arquivo de erros de concordância
+caminho_erros_concordancia = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\data\errosConcordancia.txt"
+
+# Função para carregar erros de concordância do arquivo
+def carregar_erros_concordancia(caminho_arquivo):
+    erros_concordancia = {}
+    try:
+        with open(caminho_arquivo, 'r', encoding='utf-8') as f:
+            for linha in f:
+                if not linha.startswith("#") and linha.strip():
+                    erro, correcao = linha.split('|')
+                    erros_concordancia[erro.strip()] = correcao.strip()
+        print(f"Erros de concordância carregados: {len(erros_concordancia)}")
+    except FileNotFoundError:
+        print(f"Arquivo {caminho_arquivo} não encontrado. Nenhum erro carregado.")
+    return erros_concordancia
+
+# Função para salvar novos erros de concordância no arquivo
+def salvar_erros_concordancia(caminho_arquivo, novos_erros):
+    with open(caminho_arquivo, 'a', encoding='utf-8') as f:
+        for erro, correcao in novos_erros.items():
+            f.write(f"{erro} | {correcao}\n")
+    print(f"Novos erros de concordância salvos: {len(novos_erros)}")
+
+# Função para verificar erros de concordância
+def verificar_concordancia(texto, erros_concordancia):
+    erros_detectados = {}
+    palavras = texto.split()
+
+    for i in range(len(palavras) - 1):
+        par_palavras = f"{palavras[i]} {palavras[i+1]}"
+        if par_palavras in erros_concordancia:
+            erro = f"Erro de concordância encontrado: '{par_palavras}' -> Correção: '{erros_concordancia[par_palavras]}'"
+            erros_detectados[par_palavras] = erros_concordancia[par_palavras]
+            print(erro)
+
+    return erros_detectados
+
 # Função para extrair features da redação, incluindo erros ortográficos e gramaticais
-def extrair_features(texto):
+def extrair_features(texto, erros_concordancia):
     print("Iniciando extração de features...")
-    
+
     try:
         numero_caracteres = len(texto)
         palavras = texto.split()
@@ -27,6 +65,10 @@ def extrair_features(texto):
         erros_ortograficos = aplicar_regras_conhecimento(texto)
         erros_gramaticais = aplicar_languagetool(texto)
 
+        # Verificar erros de concordância
+        erros_concordancia_detectados = verificar_concordancia(texto, erros_concordancia)
+        numero_erros_concordancia = len(erros_concordancia_detectados)
+
         numero_erros_ortograficos = len(erros_ortograficos)
         numero_erros_gramaticais = len(erros_gramaticais)
 
@@ -42,6 +84,7 @@ def extrair_features(texto):
             tamanho_medio_palavras,
             numero_erros_ortograficos,
             numero_erros_gramaticais,
+            numero_erros_concordancia,
         ]
     except Exception as e:
         print(f"Erro ao extrair características: {e}")
@@ -50,13 +93,26 @@ def extrair_features(texto):
 # Função para treinar o modelo de regressão linear com as features
 def treinar_modelo(redacoes, notas):
     print("Iniciando o treinamento do modelo...")
-    
+
+    # Carregar erros de concordância
+    erros_concordancia = carregar_erros_concordancia(caminho_erros_concordancia)
+
     features = []
+    novos_erros = {}  # Dicionário para novos erros
     for redacao in redacoes:
-        feature = extrair_features(redacao)
+        feature = extrair_features(redacao, erros_concordancia)  # Passando erros de concordância
         if feature is not None:  # Verificar se a extração foi bem-sucedida
             features.append(feature)
 
+        # Verifica se há novos erros de concordância detectados
+        erros_detectados = verificar_concordancia(redacao, erros_concordancia)
+        novos_erros.update(erros_detectados)
+
+    # Salva os novos erros de concordância no arquivo
+    if novos_erros:
+        salvar_erros_concordancia(caminho_erros_concordancia, novos_erros)
+
+    # Dividir os dados em conjunto de treinamento e teste
     X_train, X_test, y_train, y_test = train_test_split(features, notas, test_size=0.2, random_state=42)
 
     modelo = LinearRegression()
@@ -69,7 +125,7 @@ def treinar_modelo(redacoes, notas):
     print(f"Precisão do modelo: {score * 100:.2f}%")
 
     # Salvar o modelo treinado
-    caminho_modelo = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\modelo_treinado_teste.pkl"
+    caminho_modelo = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\modelo_treinado.pkl"
     joblib.dump(modelo, caminho_modelo)
     print(f"Modelo salvo em {caminho_modelo}")
 
@@ -81,7 +137,6 @@ def treinar_modelo(redacoes, notas):
 
 # Carregar o arquivo XML e extrair textos e notas
 def carregar_dataset(caminho_xml, limite=None):  # Adicionando o parâmetro limite
-
     print("Carregando o dataset...")
     tree = ET.parse(caminho_xml)
     root = tree.getroot()
@@ -120,7 +175,7 @@ def carregar_dataset(caminho_xml, limite=None):  # Adicionando o parâmetro limi
 
 # Função para avaliar uma redação com o modelo
 def avaliar_redacao_com_modelo(texto, modelo):
-    features = extrair_features(texto)
+    features = extrair_features(texto, erros_concordancia)  # Passando o texto e erros de concordância
     nota_prevista = modelo.predict([features])[0]
     
     # Aplicar as regras de conhecimento e LanguageTool
@@ -133,10 +188,13 @@ def avaliar_redacao_com_modelo(texto, modelo):
 if __name__ == "__main__":
     print("Iniciando processo...")
     caminho_xml = r"C:\Users\joao-\Desktop\JV\Educação\UFPB\Disciplinas\Sistemas Baseados em Conhecimento\Projeto_Redacao\data\DatasetRedacoes.xml"
-    redacoes, notas = carregar_dataset(caminho_xml, limite=20)  
+    redacoes, notas = carregar_dataset(caminho_xml, limite=None)  
 
     # Treinar o modelo
     modelo = treinar_modelo(redacoes, notas)
+
+    # Carregar erros de concordância para uso na avaliação
+    erros_concordancia = carregar_erros_concordancia(caminho_erros_concordancia)
 
     # Avaliar a primeira redação
     for texto_original in redacoes[:1]:  # Avaliar a primeira redação
